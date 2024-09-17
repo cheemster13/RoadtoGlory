@@ -1,0 +1,95 @@
+import streamlit as st
+import pandas as pd
+import yahoo_oauth
+import requests
+
+# Title
+st.title("Yahoo Fantasy Football Dashboard")
+
+# OAuth setup
+def authenticate_yahoo():
+    oauth = yahoo_oauth.OAuth2(None, None, from_file='yahoo_oauth.json')
+    if not oauth.token_is_valid():
+        oauth.refresh_access_token()
+    return oauth
+
+oauth = authenticate_yahoo()
+
+# Function to fetch standings for a particular year
+def fetch_league_standings_for_year(oauth, league_id, year):
+    url = f"https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.{league_id}/standings"
+    response = oauth.session.get(url, params={"format": "json"})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Error fetching {year} league standings: {response.status_code}")
+        return None
+
+# Safely get values from dictionary
+def safe_get(item, key, default="N/A"):
+    return item.get(key, default) if isinstance(item, dict) else default
+
+# Extract and display team data
+def extract_team_data(team, year):
+    try:
+        team_name = safe_get(team[0][2], 'name', 'Unknown')  # Team name
+        manager_info = safe_get(safe_get(team[0][-1], 'managers', [{}])[0], 'manager', {})  # Manager info
+        manager = safe_get(manager_info, 'nickname', 'Unknown')  # Manager nickname
+
+        team_points_info = safe_get(team[1], 'team_points', {})  # Team points
+        team_standings_info = safe_get(team[2], 'team_standings', {})  # Team standings
+
+        outcome_totals = safe_get(team_standings_info, 'outcome_totals', {})
+        wins = safe_get(outcome_totals, 'wins', 'N/A')
+        losses = safe_get(outcome_totals, 'losses', 'N/A')
+        points_for = safe_get(team_points_info, 'total', 'N/A')
+        points_against = safe_get(team_standings_info, 'points_against', 'N/A')
+
+        return {
+            'Year': year,
+            'Team Name': team_name,
+            'Manager': manager,
+            'Wins': wins,
+            'Losses': losses,
+            'Points For': points_for,
+            'Points Against': points_against
+        }
+    except Exception as e:
+        st.write(f"Error processing team {team}: {e}")
+        return None
+
+# Main logic
+league_id_2024 = "279567"  # Replace with actual 2024 league ID
+league_id_2023 = "279567"  # Replace with actual 2023 league ID (verify if it's different)
+
+all_teams = []
+
+# Fetch standings for the given year and process teams
+def process_teams_for_year(standings_data, year):
+    if standings_data:
+        teams_data = standings_data['fantasy_content']['league'][1]['standings'][0]['teams']
+        num_teams = teams_data.get('count', 0)  # Use count to loop through teams
+        for i in range(num_teams):
+            try:
+                team = teams_data[str(i)]['team']
+                if isinstance(team, list):  # Ensure team is in the expected list format
+                    team_data = extract_team_data(team, year)
+                    if team_data:
+                        all_teams.append(team_data)
+            except Exception as e:
+                st.write(f"Error processing team index {i}: {e}")
+
+# Fetch 2024 standings
+standings_data_2024 = fetch_league_standings_for_year(oauth, league_id_2024, 2024)
+process_teams_for_year(standings_data_2024, 2024)
+
+# Fetch 2023 standings
+standings_data_2023 = fetch_league_standings_for_year(oauth, league_id_2023, 2023)
+process_teams_for_year(standings_data_2023, 2023)
+
+# Create DataFrame and display
+if all_teams:
+    standings_df = pd.DataFrame(all_teams)
+    st.dataframe(standings_df)
+else:
+    st.write("No team data available for 2023 or 2024.")

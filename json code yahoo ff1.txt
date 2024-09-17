@@ -1,0 +1,171 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import yahoo_oauth
+import requests
+
+# Title
+st.title("Yahoo Fantasy Football Dashboard")
+
+# Sidebar
+st.sidebar.subheader("Input your Yahoo Fantasy League Info")
+league_id = st.sidebar.text_input("Enter your Yahoo League ID")
+team_id = st.sidebar.text_input("Enter your Yahoo Team ID")
+
+
+# OAuth setup
+def authenticate_yahoo():
+    oauth = yahoo_oauth.OAuth2(None, None, from_file='yahoo_oauth.json')
+    if not oauth.token_is_valid():
+        oauth.refresh_access_token()
+    return oauth
+
+oauth = authenticate_yahoo()
+
+
+#league_id = "279567"  # You can hardcode your league ID here for testing if needed
+
+def fetch_league_standings(oauth, league_id):
+    url = f"https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.{league_id}/standings"
+    response = oauth.session.get(url, params={"format": "json"})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error fetching league standings:", response.status_code)
+        return None
+
+# Function to safely get value if it's a dict, otherwise return a default value
+def safe_get(item, key, default="N/A"):
+    if isinstance(item, dict):
+        return item.get(key, default)
+    return default
+
+# def fetch_team_roster(oauth, team_id):
+#     url = f"https://fantasysports.yahooapis.com/fantasy/v2/team/{team_id}/roster"
+#     response = oauth.session.get(url, params={"format": "json"})
+#     if response.status_code == 200:
+#         return response.json()
+#     else:
+#         print("Error fetching team roster:", response.status_code)
+#         return None
+
+# def fetch_player_stats(oauth, player_id):
+#     url = f"https://fantasysports.yahooapis.com/fantasy/v2/player/{player_id}/stats"
+#     response = oauth.session.get(url, params={"format": "json"})
+#     if response.status_code == 200:
+#         return response.json()
+#     else:
+#         print("Error fetching player stats:", response.status_code)
+#         return None
+
+
+# def fetch_league_standings_years(oauth, league_id, years):
+#     standings_history = {}
+#     for year in years:
+#         league_key = f"nfl.l.{league_id}.{year}"
+#         url = f"https://fantasysports.yahooapis.com/fantasy/v2/league/{league_key}/standings"
+#         response = oauth.session.get(url, params={"format": "json"})
+#         if response.status_code == 200:
+#             standings_data = response.json()
+#             # Extract team standings from the response
+#             standings = standings_data['fantasy_content']['league'][1]['standings'][0]['teams']
+#             standings_history[year] = standings
+#         else:
+#             st.error(f"Error fetching league standings for {year}: {response.status_code}")
+#     return standings_history
+
+# def extract_team_performance(standings_history, team_id):
+#     performance = []
+#     for year, standings in standings_history.items():
+#         for team in standings:
+#             team_info = team[1]['team'][0][2]
+#             if team_info['team_id'] == str(team_id):  # Match the team_id
+#                 performance.append({
+#                     'year': year,
+#                     'rank': team_info['team_standings']['rank'],  # Adjust this based on what you want to track (rank, wins, etc.)
+#                     'wins': team_info['team_standings']['outcome_totals']['wins'],
+#                     'losses': team_info['team_standings']['outcome_totals']['losses']
+#                 })
+#                 break
+#     return performance
+
+# # Plot team performance over the past 5 years
+# def plot_team_performance(performance):
+#     years = [p['year'] for p in performance]
+#     ranks = [p['rank'] for p in performance]
+    
+#     fig, ax = plt.subplots()
+#     ax.plot(years, ranks, marker='o', linestyle='-', color='b')
+#     ax.set_xlabel('Year')
+#     ax.set_ylabel('Team Rank')
+#     ax.set_title('Team Performance Over Time')
+#     ax.invert_yaxis()  # Assuming lower rank is better (i.e., rank 1 is first place)
+    
+#     st.pyplot(fig)
+
+# # Years you want to fetch data for (2023, 2022, etc.)
+# years = [2023, 2022, 2021, 2020, 2019]
+
+# # Fetch historical standings data
+# standings_history = fetch_league_standings_years(oauth, league_id, years)
+
+# # Extract specific team's performance
+# team_performance = extract_team_performance(standings_history, team_id)
+
+# # Plot the performance over time
+# if team_performance:
+#     plot_team_performance(team_performance)
+# else:
+#     st.write("No performance data found for the team.")
+
+# Safely extract team data
+def extract_team_data(team):
+    try:
+        # Ensure we are working with a list of dicts in the correct format
+        if isinstance(team, list) and len(team) > 1:
+            team_name = safe_get(team[0][2], 'name', 'N/A')
+            wins = safe_get(safe_get(team[1], 'team_standings', {}).get('outcome_totals', {}), 'wins', 'N/A')
+            losses = safe_get(safe_get(team[1], 'team_standings', {}).get('outcome_totals', {}), 'losses', 'N/A')
+            points_for = safe_get(team[1], 'team_points', {}).get('total', 'N/A')
+            points_against = safe_get(team[1], 'team_standings', {}).get('points_against', 'N/A')
+            return {
+                'Team Name': team_name,
+                'Wins': wins,
+                'Losses': losses,
+                'Points For': points_for,
+                'Points Against': points_against
+            }
+    except Exception as e:
+        st.write(f"Error processing team: {team}")
+        st.write(f"Error: {e}")
+    return None
+
+if league_id:
+    standings_data = fetch_league_standings(oauth, league_id)
+    if standings_data:
+        st.subheader("League Standings")
+        
+        try:
+            # Access teams data
+            teams_data = standings_data['fantasy_content']['league'][1]['standings'][0]['teams']
+            st.write("Raw Teams Data:", teams_data)  # Debugging: Print the entire teams data
+
+            teams = []
+
+            # Loop through all teams and extract relevant data
+            for team_key in teams_data:
+                team = teams_data[team_key]['team']
+                st.write(f"Processing team: {team_key}, Team Data: {team}")  # Debugging: Print each team's data
+                
+                # Extract team data using our function
+                team_data = extract_team_data(team)
+                if team_data:
+                    teams.append(team_data)
+
+            # Convert the list to a DataFrame and display it
+            standings_df = pd.DataFrame(teams)
+            st.dataframe(standings_df)
+
+        except (IndexError, KeyError, TypeError) as e:
+            st.error(f"An error occurred: {e}")
+            st.write("Detailed Error:", str(e))  # Print the exact error for debugging

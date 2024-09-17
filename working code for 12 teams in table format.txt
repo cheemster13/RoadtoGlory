@@ -1,0 +1,99 @@
+import streamlit as st
+import pandas as pd
+import yahoo_oauth
+import requests
+
+# Title
+st.title("Yahoo Fantasy Football Dashboard - Display Two Teams")
+
+# Sidebar
+st.sidebar.subheader("Input your Yahoo Fantasy League Info")
+league_id = st.sidebar.text_input("Enter your Yahoo League ID")
+
+# OAuth setup
+def authenticate_yahoo():
+    oauth = yahoo_oauth.OAuth2(None, None, from_file='yahoo_oauth.json')
+    if not oauth.token_is_valid():
+        oauth.refresh_access_token()
+    return oauth
+
+oauth = authenticate_yahoo()
+
+# Fetch league standings for the league
+def fetch_league_standings(oauth, league_id):
+    url = f"https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.{league_id}/standings"
+    response = oauth.session.get(url, params={"format": "json"})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Error fetching league standings: {response.status_code}")
+        return None
+
+# Extract and display data for twelve teams
+def extract_and_display_twelve_teams(teams_data):
+    teams = []  # Initialize the list to store team data
+    count = 0
+
+    # Loop through the first twelve teams and extract relevant data
+    for team_key in teams_data:
+        if count >= 12:  # Process up to 12 teams
+            break
+        team = teams_data[team_key]['team']
+
+        try:
+            # Extract relevant data for each team
+            team_name = team[0][2].get('name', 'N/A')
+            wins = team[2].get('team_standings', {}).get('outcome_totals', {}).get('wins', 'N/A')
+            losses = team[2].get('team_standings', {}).get('outcome_totals', {}).get('losses', 'N/A')
+            points_for = team[1].get('team_points', {}).get('total', 'N/A')
+            points_against = team[2].get('team_standings', {}).get('points_against', 'N/A')
+            rank = team[2].get('team_standings', {}).get('rank', 'N/A')
+            playoff_seed = team[2].get('team_standings', {}).get('playoff_seed', 'N/A')
+            faab_balance = team[0][8].get('faab_balance', 'N/A')
+            number_of_moves = team[0][9].get('number_of_moves', 'N/A')
+
+            # Append the team data to the list
+            teams.append({
+                "Team Name": team_name,
+                "Wins": wins,
+                "Losses": losses,
+                "Points For": points_for,
+                "Points Against": points_against,
+                "Rank": rank,
+                "Playoff Seed": playoff_seed,
+                "FAAB Balance": faab_balance,
+                "Number of Moves": number_of_moves
+            })
+
+            count += 1
+
+        except (IndexError, KeyError, TypeError) as e:
+            # Log error for debugging the 12th team or any inconsistent team data
+            st.error(f"An error occurred while processing team {team_name if 'team_name' in locals() else 'Unknown'}: {e}")
+            st.write(f"Team Data: {team}")
+
+    # Ensure numeric columns are properly handled
+    if teams:
+        standings_df = pd.DataFrame(teams)
+        numeric_columns = ['Wins', 'Losses', 'Points For', 'Points Against']
+        standings_df[numeric_columns] = standings_df[numeric_columns].apply(pd.to_numeric, errors='coerce')
+
+        # Display the DataFrame
+        st.write("Standings for Twelve Teams")
+        st.dataframe(standings_df)
+    else:
+        st.write("No teams were processed successfully.")
+
+
+
+
+
+if league_id:
+    standings_data = fetch_league_standings(oauth, league_id)
+    if standings_data:
+        try:
+            teams_data = standings_data['fantasy_content']['league'][1]['standings'][0]['teams']
+            extract_and_display_twelve_teams(teams_data)  # Call the updated function for 11 teams
+        except (IndexError, KeyError, TypeError) as e:
+            st.error(f"An error occurred: {e}")
+            st.write("Detailed Error:", str(e))

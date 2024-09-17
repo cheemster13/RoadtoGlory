@@ -1,0 +1,19 @@
+{
+    "access_token": "_jPitKmbug16086CNL3GBmQ1d5nAdKnTBAENyTELD7kZVrnF2islt_qX6tKhvL.qFrKEJPetLSoWh9i_GraIV9DVpQUVCNjje_7F34KFbEMMXKQW4GiFRlue8bEuKtoHcnliMMrRq0RBLG_J302gwUFC9vYLOrzzxBk_8o5oA2YlPrLoWAosJA_bmOvZ09ZoLX1e_JS1NXix7PihFEq3wMHEF0QPvlwd8CM5vmDVdv1E1VanW6NwE2hPadiqQ980oC.VWykQDqraiOP_HdYH8XQIRY00r5H.bgvxFHD3o9fmNO7eUKj_NAR3jUJxp_LqlFJ12bkzxeAPOt986uSmjNwpCucpuSJSSgV1XmXURZhA5eCq4Wz0N_VaKkEjFUr2uD6WlB3xRL36wtMiDtASuNuFKEfzjr8gvmhymEYRuNU5IfOxyKfR1tYMMIeSp2NYeaHQeVLY9vM47EZkyE1QUazQectmhNtBwv8IK30HgxPhfXiv.GkIlMOyieP.NY2Pf1b4He232_1evJ6aZITXY62cP47ViT_m7GYov.2YdwnJBk.A7QbIorqo7mHInXQVJnwK6S38Xx53q_BxPjCyuJvqJOgWWuW9MSp.R5zdxYY1SgKCbDtNSYAY.ikivCfBOwsRkt2KtsNTj_0PDe_5xJ4NYNv4aZorFAgA2cpxRALpDEO8XblnNIRlp8yevEgZYo5pcGCjnNZYZkXmEeLGoUYJ74AN4_.jOK6xg8HbqvBATUpgaNXOfU.X9MpHsJZqc5iIiAr3MhIXfCGnDX5DpG0ERQIrNW4NCmR2zvTAjzqlXMFySKu5KaDMfzdDBl_KQbrj5G5dS.p2YajbBJUEloOXO3ioAlgM7ldc8Qk.tuC_w2F36rGjnZW9jInDWsak.qSdSA7AI8IrDOEtKVnwhYk29Ju3",
+    "consumer_key": "dj0yJmk9MUpFRm5MajJ1dE1NJmQ9WVdrOVRHOUtOR2RGVTNJbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PWM4",
+    "consumer_secret": "93ffbeaad87f050400f5c91911e92bb9d73917ae",
+    "guid": null,
+    "refresh_token": "AA8B4mbqrPWhHOfsKckY.4rPQt.I~000~Qu7F6hOyRYoGSSFxffbC_bI-",
+    "scopes": [
+        "fspt-w"
+    ],
+    "token": {
+        "access_token": "",
+        "expiration_time": "",
+        "expires_in": "3600",
+        "refresh_token": "",
+        "token_type": "bearer"
+    },
+    "token_time": 1726585589.7891228,
+    "token_type": "bearer"
+}

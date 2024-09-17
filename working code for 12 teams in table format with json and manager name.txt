@@ -1,0 +1,101 @@
+import streamlit as st
+import pandas as pd
+import yahoo_oauth
+
+# Title
+st.title("Yahoo Fantasy Football Dashboard")
+
+# Sidebar
+st.sidebar.subheader("Input your Yahoo Fantasy League Info")
+league_id = st.sidebar.text_input("Enter your Yahoo League ID")
+
+# OAuth setup
+def authenticate_yahoo():
+    oauth = yahoo_oauth.OAuth2(None, None, from_file='yahoo_oauth.json')
+    if not oauth.token_is_valid():
+        oauth.refresh_access_token()
+    return oauth
+
+oauth = authenticate_yahoo()
+
+# Fetch league standings
+def fetch_league_standings(oauth, league_id):
+    url = f"https://fantasysports.yahooapis.com/fantasy/v2/league/nfl.l.{league_id}/standings"
+    response = oauth.session.get(url, params={"format": "json"})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Error fetching league standings: {response.status_code}")
+        return None
+
+# Safely extract value from nested dictionary
+def safe_get(dictionary, key, default="N/A"):
+    return dictionary.get(key, default) if isinstance(dictionary, dict) else default
+
+# Updated safe extraction of team standings with detailed logging for 9 teams
+def extract_and_display_teams(teams_data, num_teams=9):
+    teams = []
+
+    # Process the first `num_teams` from the dataset
+    for team_key in map(str, range(num_teams)):
+        try:
+            # Access the team data using index "team"
+            team = teams_data[team_key]['team']
+
+            # Extract relevant data points
+            team_name = team[0][2]['name'] if 'name' in team[0][2] else 'Unknown'
+            manager_nickname = team[0][-1]['managers'][0]['manager']['nickname'] if 'managers' in team[0][-1] else 'Unknown'
+
+            # Debugging - print team data to understand its structure
+            st.write(f"Team Data for {team_name}: {team}")
+
+            # Safely access the team_standings data
+            if len(team) > 2 and isinstance(team[2], dict):
+                team_points = team[2].get('team_points', {}).get('total', 'N/A')
+                if 'team_standings' in team[2]:
+                    team_standings = team[2]['team_standings']
+                    wins = team_standings.get('outcome_totals', {}).get('wins', 'N/A')
+                    losses = team_standings.get('outcome_totals', {}).get('losses', 'N/A')
+                    points_for = team_standings.get('points_for', 'N/A')  # Correct extraction for points_for
+                    points_against = team_standings.get('points_against', 'N/A')
+                else:
+                    wins = losses = points_for = points_against = "N/A"
+            else:
+                wins = losses = points_for = points_against = "N/A"
+                team_points = "N/A"
+
+            # Log the extracted details
+            st.write(f"Extracted for {team_name}: Wins={wins}, Losses={losses}, Points For={points_for}, Points Against={points_against}")
+
+            # Store team data
+            teams.append({
+                'Team Name': team_name,
+                'Manager': manager_nickname,
+                'Wins': wins,
+                'Losses': losses,
+                'Points For': points_for,
+                'Points Against': points_against
+            })
+
+        except (IndexError, KeyError) as e:
+            st.error(f"An error occurred while processing team {team_name}: {e}")
+            st.write(f"Team Data: {team}")
+
+    # Display team standings
+    standings_df = pd.DataFrame(teams)
+    st.dataframe(standings_df)
+
+# Main execution
+if league_id:
+    standings_data = fetch_league_standings(oauth, league_id)
+    if standings_data:
+        try:
+            # Access teams data
+            teams_data = standings_data['fantasy_content']['league'][1]['standings'][0]['teams']
+            # Display data for 9 teams
+            extract_and_display_teams(teams_data, num_teams=9)
+        except (IndexError, KeyError, TypeError) as e:
+            st.error(f"An error occurred: {e}")
+            st.write("Detailed Error:", str(e))
+
+
